@@ -1,0 +1,81 @@
+#!/usr/bin/expect
+################################
+# Set Password for DRAC interface
+# by David Yurkiewicz
+# WWW.D87STUDIOS.COM
+# USAGE: expect DracPass.exp 192.168.0.10
+# Enter password when prompted. Script will assume the Drac's password is the default out the box ("calvin")
+
+# Settings for expect
+set timeout 8
+set ip [lindex $argv 0]
+set option [lindex $argv 2] 
+
+# Make sure we get the parameters
+if {[llength $argv] == 0} {
+	puts "\n Enter the IP of the DRAC interface e.g. 192.168.5.5. \n You will be prompted for a password\n"
+	exit 1
+}
+
+# Prompt for password
+	stty -echo
+	send_user -- "Password for Drac device on $argv: "
+	expect_user -re "(.*)\n"
+	send_user "\n"
+	stty echo
+	set password $expect_out(1,string)
+
+# SSH to the DRAC interface
+spawn ssh "root\@$ip"
+
+expect (yes/no)? { send "yes\r"}
+
+expect assword: { send "calvin\r" }
+puts "\n\n Looks like this device was already set. Please try to log in https//$ip\n"
+expect assword: { exit 1 }       
+
+expect ctn1->
+	
+send "racadm\r"
+
+expect adm>>
+
+send "racadm config -g cfgUserAdmin -o cfgUserAdminUserName -i 2 bookit\r"
+
+expect adm>>
+
+send "racadm config -g cfgUserAdmin -o cfgUserAdminPassword -i 2 $password\r"
+
+expect adm>>
+
+send "racadm config -g cfgUserAdmin -i 2 -o cfgUserAdminPrivilege 0x000001ff\r"
+
+expect adm>>
+
+send "racadm config -g cfgUserAdmin -i 2 -o cfgUserAdminIpmiLanPrivilege 4\r"
+
+expect adm>>
+
+send "racadm config -g cfgUserAdmin -i 2 -o cfgUserAdminIpmiSerialPrivilege 4\r"
+
+expect adm>>
+
+send "racadm config -g cfgUserAdmin -i 2 -o cfgUserAdminSolEnable 1\r"
+
+expect adm>>
+
+send "racadm config -g cfgUserAdmin -i 2 -o cfgUserAdminEnable 1\r"
+
+expect adm>>
+
+send "quit\r"
+
+expect n1->
+
+send "exit\r"
+
+expect closed
+puts "\n##############################################\n"
+puts "\nDone! Make sure that you can log in now. \n\nhttps://$ip\n"
+
+exit 0
